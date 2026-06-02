@@ -1,93 +1,171 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Snake Game</title>
+  <title>Neon Snake Game</title>
   <style>
     body {
-      text-align: center;
-      font-family: Arial;
-      background: #111;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle, #102542, #050814);
       color: white;
+      text-align: center;
+    }
+
+    h1 {
+      color: #00ffcc;
+      text-shadow: 0 0 15px #00ffcc;
+      margin-top: 20px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 25px;
+      font-size: 20px;
+      margin-bottom: 10px;
     }
 
     canvas {
-      background: #222;
-      border: 3px solid white;
-      margin-top: 20px;
+      background: #050505;
+      border: 4px solid #00ffcc;
+      box-shadow: 0 0 25px #00ffcc;
+      border-radius: 12px;
+    }
+
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #00ffcc;
+      color: #050814;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: white;
+    }
+
+    .controls {
+      margin-top: 10px;
+    }
+
+    .mobile button {
+      width: 55px;
+      height: 45px;
+      font-size: 20px;
     }
   </style>
 </head>
 <body>
 
-  <h1>Snake Game</h1>
-  <h2>Score: <span id="score">0</span></h2>
+  <h1>🐍 Neon Snake Game</h1>
+
+  <div class="stats">
+    <div>Score: <span id="score">0</span></div>
+    <div>High Score: <span id="highScore">0</span></div>
+    <div>Level: <span id="level">1</span></div>
+  </div>
 
   <canvas id="game" width="400" height="400"></canvas>
+
+  <div class="controls">
+    <button onclick="startGame()">Start</button>
+    <button onclick="pauseGame()">Pause / Resume</button>
+    <button onclick="restartGame()">Restart</button>
+  </div>
+
+  <div class="mobile">
+    <div><button onclick="setDirection(0, -box)">⬆</button></div>
+    <button onclick="setDirection(-box, 0)">⬅</button>
+    <button onclick="setDirection(box, 0)">➡</button>
+    <div><button onclick="setDirection(0, box)">⬇</button></div>
+  </div>
 
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
+
     const scoreText = document.getElementById("score");
+    const highScoreText = document.getElementById("highScore");
+    const levelText = document.getElementById("level");
 
     const box = 20;
-    let score = 0;
+    let snake, food, dx, dy, score, level, speed, game, running, paused;
 
-    let snake = [
-      { x: 200, y: 200 }
-    ];
+    let highScore = localStorage.getItem("snakeHighScore") || 0;
+    highScoreText.textContent = highScore;
 
-    let food = {
-      x: Math.floor(Math.random() * 20) * box,
-      y: Math.floor(Math.random() * 20) * box
-    };
+    function resetGame() {
+      snake = [{ x: 200, y: 200 }];
+      food = randomFood();
+      dx = box;
+      dy = 0;
+      score = 0;
+      level = 1;
+      speed = 150;
+      running = false;
+      paused = false;
 
-    let dx = box;
-    let dy = 0;
-
-    document.addEventListener("keydown", changeDirection);
-
-    function changeDirection(event) {
-      if (event.key === "ArrowUp" && dy === 0) {
-        dx = 0;
-        dy = -box;
-      } else if (event.key === "ArrowDown" && dy === 0) {
-        dx = 0;
-        dy = box;
-      } else if (event.key === "ArrowLeft" && dx === 0) {
-        dx = -box;
-        dy = 0;
-      } else if (event.key === "ArrowRight" && dx === 0) {
-        dx = box;
-        dy = 0;
-      }
+      scoreText.textContent = score;
+      levelText.textContent = level;
+      draw();
     }
 
-    function drawGame() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function startGame() {
+      if (running) return;
+      running = true;
+      game = setInterval(update, speed);
+    }
 
-      ctx.fillStyle = "red";
-      ctx.fillRect(food.x, food.y, box, box);
+    function pauseGame() {
+      if (!running) return;
+      paused = !paused;
+    }
 
-      ctx.fillStyle = "lime";
-      for (let part of snake) {
-        ctx.fillRect(part.x, part.y, box, box);
-      }
+    function restartGame() {
+      clearInterval(game);
+      resetGame();
+      startGame();
+    }
 
-      let head = {
+    function randomFood() {
+      return {
+        x: Math.floor(Math.random() * 20) * box,
+        y: Math.floor(Math.random() * 20) * box
+      };
+    }
+
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "ArrowUp") setDirection(0, -box);
+      if (e.key === "ArrowDown") setDirection(0, box);
+      if (e.key === "ArrowLeft") setDirection(-box, 0);
+      if (e.key === "ArrowRight") setDirection(box, 0);
+      if (e.key.toLowerCase() === "p") pauseGame();
+    });
+
+    function setDirection(newDx, newDy) {
+      if (newDx === -dx && newDy === -dy) return;
+      dx = newDx;
+      dy = newDy;
+    }
+
+    function update() {
+      if (paused) return;
+
+      const head = {
         x: snake[0].x + dx,
         y: snake[0].y + dy
       };
 
       if (
-        head.x < 0 ||
-        head.y < 0 ||
-        head.x >= canvas.width ||
-        head.y >= canvas.height ||
+        head.x < 0 || head.y < 0 ||
+        head.x >= canvas.width || head.y >= canvas.height ||
         hitBody(head)
       ) {
-        clearInterval(game);
-        alert("Game Over! Score: " + score);
-        location.reload();
+        gameOver();
         return;
       }
 
@@ -96,25 +174,97 @@
       if (head.x === food.x && head.y === food.y) {
         score++;
         scoreText.textContent = score;
-        food = {
-          x: Math.floor(Math.random() * 20) * box,
-          y: Math.floor(Math.random() * 20) * box
-        };
+
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem("snakeHighScore", highScore);
+          highScoreText.textContent = highScore;
+        }
+
+        if (score % 5 === 0) {
+          level++;
+          levelText.textContent = level;
+          speed = Math.max(60, speed - 15);
+          clearInterval(game);
+          game = setInterval(update, speed);
+        }
+
+        food = randomFood();
       } else {
         snake.pop();
+      }
+
+      draw();
+    }
+
+    function draw() {
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = "#111";
+      for (let i = 0; i < canvas.width; i += box) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#ff0066";
+      ctx.shadowColor = "#ff0066";
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(food.x + 10, food.y + 10, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowColor = "#00ffcc";
+      ctx.shadowBlur = 12;
+
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "#ffffff" : "#00ffcc";
+        ctx.fillRect(snake[i].x + 2, snake[i].y + 2, box - 4, box - 4);
+      }
+
+      ctx.shadowBlur = 0;
+
+      if (!running) {
+        ctx.fillStyle = "white";
+        ctx.font = "22px Arial";
+        ctx.fillText("Click Start to Play", 115, 200);
+      }
+
+      if (paused) {
+        ctx.fillStyle = "white";
+        ctx.font = "28px Arial";
+        ctx.fillText("Paused", 155, 200);
       }
     }
 
     function hitBody(head) {
       for (let i = 0; i < snake.length; i++) {
-        if (head.x === snake[i].x && head.y === snake[i].y) {
-          return true;
-        }
+        if (head.x === snake[i].x && head.y === snake[i].y) return true;
       }
       return false;
     }
 
-    let game = setInterval(drawGame, 150);
+    function gameOver() {
+      clearInterval(game);
+      running = false;
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ff0066";
+      ctx.font = "30px Arial";
+      ctx.fillText("GAME OVER", 105, 180);
+      ctx.fillStyle = "white";
+      ctx.font = "18px Arial";
+      ctx.fillText("Final Score: " + score, 145, 220);
+    }
+
+    resetGame();
   </script>
 
 </body>
